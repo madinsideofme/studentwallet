@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from './api.js'
 import { todayISO } from './format.js'
+import { categoryName } from './categories.js'
 
 export default function ExpenseForm({ categories, onAdded }) {
   const [type, setType] = useState('expense')
@@ -11,20 +12,37 @@ export default function ExpenseForm({ categories, onAdded }) {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
-  // Когда категории загрузились, выбираем первую по умолчанию
+  // Select the first category when categories load.
   useEffect(() => {
-    if (!categoryId && categories.length) setCategoryId(String(categories[0].id))
+    if (!categoryId && categories.length) {
+      setCategoryId(String(categories[0].id))
+    }
   }, [categories, categoryId])
 
   async function submit(e) {
     e.preventDefault()
     setError('')
+
     const value = Number(amount)
-    if (!value || value <= 0) {
-      setError('Введите сумму больше нуля')
+
+    if (!Number.isFinite(value) || value <= 0) {
+      setError('Enter an amount greater than zero')
       return
     }
+
+    // Check the date before sending the transaction.
+    if (!date || date > todayISO()) {
+      setError('Choose today or an earlier date')
+      return
+    }
+
+    if (!categories.some((category) => String(category.id) === categoryId)) {
+      setError('Choose a valid category')
+      return
+    }
+
     setBusy(true)
+
     try {
       await api.addExpense({
         amount: value,
@@ -34,6 +52,7 @@ export default function ExpenseForm({ categories, onAdded }) {
         spent_at: date,
         source: 'web',
       })
+
       setAmount('')
       setNote('')
       onAdded()
@@ -46,47 +65,62 @@ export default function ExpenseForm({ categories, onAdded }) {
 
   return (
     <section className="block">
-      <h2>Новая запись</h2>
+      <h2>New transaction</h2>
+
       <form className="expense-form" onSubmit={submit}>
-        <div className="segmented" role="group" aria-label="Тип записи">
+        <div
+          className="segmented"
+          role="group"
+          aria-label="Transaction type"
+        >
           <button
             type="button"
             className={type === 'expense' ? 'on' : ''}
             aria-pressed={type === 'expense'}
             onClick={() => setType('expense')}
           >
-            Расход
+            Expense
           </button>
+
           <button
             type="button"
             className={type === 'income' ? 'on' : ''}
             aria-pressed={type === 'income'}
             onClick={() => setType('income')}
           >
-            Доход
+            Income
           </button>
         </div>
 
         <div className="grid-2">
           <label>
-            Сумма, ₸
+            Amount, ₸
             <input
               type="number"
               inputMode="decimal"
-              min="1"
-              step="any"
+              min="0.01"
+              step="0.01"
               required
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="1500"
             />
           </label>
+
           <label>
-            Категория
-            <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} required>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.icon} {c.name}
+            Category
+            <select
+              value={categoryId}
+              onChange={(e) => setCategoryId(e.target.value)}
+              required
+            >
+              <option value="" disabled>
+                Choose a category
+              </option>
+
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                 {category.icon} {categoryName(category.name)}
                 </option>
               ))}
             </select>
@@ -95,17 +129,24 @@ export default function ExpenseForm({ categories, onAdded }) {
 
         <div className="grid-2">
           <label>
-            Комментарий
+            Note
             <input
               value={note}
               maxLength={255}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="Например, обед"
+              placeholder="For example, lunch"
             />
           </label>
+
           <label>
-            Дата
-            <input type="date" required value={date} onChange={(e) => setDate(e.target.value)} />
+            Date
+            <input
+              type="date"
+              required
+              max={todayISO()}
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
           </label>
         </div>
 
@@ -115,8 +156,12 @@ export default function ExpenseForm({ categories, onAdded }) {
           </p>
         )}
 
-        <button className="primary" type="submit" disabled={busy || !categoryId}>
-          {busy ? 'Сохраняем…' : 'Добавить'}
+        <button
+          className="primary"
+          type="submit"
+          disabled={busy || !categoryId}
+        >
+          {busy ? 'Saving…' : 'Add transaction'}
         </button>
       </form>
     </section>

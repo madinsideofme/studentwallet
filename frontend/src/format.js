@@ -1,25 +1,30 @@
-const number = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 })
+const number = new Intl.NumberFormat('en-GB', {
+  maximumFractionDigits: 2,
+})
 
-export const money = (value) => `${number.format(value)} ₸`
+export const money = (value) => `${number.format(value)} ₸`
 
-// Сегодняшняя дата в формате ГГГГ-ММ-ДД по местному времени
-export const todayISO = () => new Date().toLocaleDateString('en-CA')
+export const todayISO = () => {
+  const today = new Date()
+  const year = today.getFullYear()
+  const month = String(today.getMonth() + 1).padStart(2, '0')
+  const day = String(today.getDate()).padStart(2, '0')
 
-// Текущий месяц в формате ГГГГ-ММ (как ждёт backend)
+  return `${year}-${month}-${day}`
+}
+
 export const monthISO = () => todayISO().slice(0, 7)
 
 export const shortDate = (iso) =>
-  new Date(`${iso}T00:00:00`).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
+  new Date(`${iso}T00:00:00`).toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+  })
 
 export const monthTitle = (iso) =>
-  new Date(`${iso}-01T00:00:00`).toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })
+  new Date(`${iso}-01T00:00:00`).toLocaleDateString('en-GB', {
+    month: 'long',
+    year: 'numeric',
+  })
 
-// 1 день, 2 дня, 5 дней
-export function daysWord(n) {
-  const last = n % 10
-  const lastTwo = n % 100
-  if (lastTwo >= 11 && lastTwo <= 14) return 'дней'
-  if (last === 1) return 'день'
-  if (last >= 2 && last <= 4) return 'дня'
-  return 'дней'
-}
+export const daysWord = (n) => (n === 1 ? 'day' : 'days')
